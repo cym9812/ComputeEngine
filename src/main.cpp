@@ -2,6 +2,7 @@
 #include <rapidjson/document.h>
 #include <iostream>
 #include <stdexcept>
+#include <variant>
 
 std::string test_data = R"({
   "type": "operation",
@@ -39,7 +40,7 @@ std::string test_data = R"({
           },
           "right": {
             "type": "value",
-            "value": 10
+            "value": 20
           }
         }
       ]
@@ -56,6 +57,11 @@ int main() {
     }
 
     ComputeLib::Executor executor(1);
-    executor.run(doc);
-    std::cout << "123" << std::endl;
+    try {
+      auto res = executor.run(doc);
+      std::cout << std::get<ComputeLib::NumericType>(res) << std::endl;
+
+    }catch (const std::exception &e) {
+      std::cout << e.what();
+    }
 }
