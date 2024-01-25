@@ -1,4 +1,5 @@
 #include "executor.h"
+#include "data_frame.h"
 #include <rapidjson/document.h>
 #include <iostream>
 #include <stdexcept>
