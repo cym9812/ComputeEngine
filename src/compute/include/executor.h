@@ -163,14 +163,14 @@ namespace ComputeLib {
         }
 
         static std::string getQueryType(const Query &query) {
-            if (!query.IsObject() || !query["type"].IsString()) {
+            if (!query.IsObject() || !query.HasMember("type") || !query["type"].IsString()) {
                 throw std::runtime_error("Could not find query type, invalid query format");
             }
             return query["type"].GetString();
         }
 
         static std::string getQueryOperation(const Query &query) {
-            if (!query.IsObject() | !query["operation"].IsString()) {
+            if (!query.IsObject() || !query.HasMember("operation") || !query["operation"].IsString()) {
                 throw std::runtime_error("Could not find query operation, invalid query format");
             }
             return query["operation"].GetString();
