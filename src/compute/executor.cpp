@@ -100,24 +100,34 @@ bool Executor::isSameLength(const std::vector<GenericValue> &vector) {
 }
 
 GenericValue Executor::run(const Query &query) {
-    const std::string type = query["type"].GetString();
+    const std::string type = getQueryType(query);
 
-    if (type == std::string("operation")) {
+    if (type == "operation") {
         const std::string operatorString = getQueryOperation(query);
         if (!operationMap_.contains(operatorString)) {
             throw std::runtime_error("Unknown operation: " + operatorString);
         }
         GenericValue returnValue = operationMap_[operatorString](query);
         return returnValue;
-    } else if (type == std::string("value")) {
-        if (query["value"].IsNumber()) {
-            return query["value"].GetDouble();
-        } else {
-            throw std::runtime_error("Unknown value type: " + std::string(query["value"].GetString()));
-        }
-    } else {
-        throw std::runtime_error("Unknown type: " + type);
     }
+
+    if (type == "value") {
+        if (query["value"].IsNumber()) {
+            NumericType returnValue = query["value"].GetDouble();
+            return returnValue;
+        }
+        if (query["value"].IsArray()) {
+            NumericVectorType returnValue;
+            for (const auto &elem: query["value"].GetArray()) {
+                returnValue.emplace_back(elem.GetDouble());
+            }
+            return returnValue;
+        }
+
+        throw std::runtime_error("Invalid type inside value");
+    }
+
+    throw std::runtime_error("Unknown type: " + type);
 }
 
 
@@ -154,7 +164,7 @@ GenericValue Executor::compareOp(const Query &query) {
     if (holdsNumericVector(left) && holdsNumeric(right)) {
         const auto &leftVector = GET_NUMERIC_VECTOR(left);
         const auto rightValue = GET_NUMERIC(right);
-        std::vector<BoolType> result(leftVector.size(), FALSE);
+        BoolVectorType result(leftVector.size(), FALSE);
         for (std::size_t i = 0; i < leftVector.size(); ++i) {
             result[i] = cmp(leftVector[i], rightValue) ? TRUE : FALSE;
         }
@@ -167,7 +177,7 @@ GenericValue Executor::compareOp(const Query &query) {
         if (leftVector.size() != rightVector.size()) {
             throw std::runtime_error("Vector size mismatch");
         }
-        std::vector<BoolType> result(leftVector.size(), FALSE);
+        BoolVectorType result(leftVector.size(), FALSE);
         for (std::size_t i = 0; i < leftVector.size(); ++i) {
             result[i] = cmp(leftVector[i], rightVector[i]) ? TRUE : FALSE;
         }
@@ -210,7 +220,7 @@ GenericValue Executor::mathOp(const Query &query) {
     if (holdsNumericVector(left) && holdsNumeric(right)) {
         const auto &leftVector = GET_NUMERIC_VECTOR(left);
         const auto rightValue = GET_NUMERIC(right);
-        std::vector<NumericType> result(leftVector.size(), 0);
+        NumericVectorType result(leftVector.size(), FALSE);
         for (std::size_t i = 0; i < leftVector.size(); ++i) {
             result[i] = func(leftVector[i], rightValue);
         }
@@ -223,7 +233,7 @@ GenericValue Executor::mathOp(const Query &query) {
         if (leftVector.size() != rightVector.size()) {
             throw std::runtime_error("Vector size mismatch");
         }
-        std::vector<NumericType> result(leftVector.size(), FALSE);
+        NumericVectorType result(leftVector.size(), FALSE);
         for (std::size_t i = 0; i < leftVector.size(); ++i) {
             result[i] = func(leftVector[i], rightVector[i]);
         }
@@ -368,11 +378,44 @@ GenericValue Executor::jumpOp(const Query &query) {
      * "type": "operation"
      * "operation": "JUMP"
      * "value": <operand>
-     * "from": <value>
+     * "from": [<value>, <value>, ...]
      * "to": <value>
      */
-    BoolType result = 1;
-    return result;
+    const GenericValue value = run(query["value"]);
+    const GenericValue from = run(query["from"]);
+    const GenericValue to = run(query["to"]);
+
+    if (holdsNumericVector(value) && holdsNumericVector(from) && holdsNumeric(to)) {
+        const auto &valueVec = GET_NUMERIC_VECTOR(value);
+        const auto &fromVec = GET_NUMERIC_VECTOR(from);
+        const auto toVal = GET_NUMERIC(to);
+
+        BoolVectorType result(valueVec.size(), FALSE);
+
+        if (fromVec.empty()) {
+            // Any -> toVal
+            for (std::size_t i = 1; i < valueVec.size(); ++i) {
+                if (valueVec[i - 1] != toVal && valueVec[i] == toVal) {
+                    result[i] = TRUE;
+                }
+            }
+        } else {
+            // fromVal -> toVal
+            for (std::size_t i = 1; i < valueVec.size(); ++i) {
+                if (valueVec[i] == toVal) {
+                    for (const auto &fromVal: fromVec) {
+                        if (valueVec[i - 1] == fromVal) {
+                            result[i] = TRUE;
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    throw std::runtime_error("Operand of jump functions must be of type numeric[]");
 }
 
 GenericValue Executor::beforeOp(const Query &query) {
