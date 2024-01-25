@@ -22,8 +22,17 @@ std::string test_data = R"({
           "operation": "GT",
           "left": {
             "type": "operation",
-            "operation": "SELECT",
-            "value": "a"
+            "operation": "ADD",
+            "left": {
+              "type": "operation",
+              "operation": "SELECT",
+              "value": "b"
+            },
+            "right": {
+              "type": "operation",
+              "operation": "SELECT",
+              "value": "b"
+            }
           },
           "right": {
             "type": "value",
@@ -55,13 +64,16 @@ int main() {
     if (doc.HasParseError()) {
         throw std::runtime_error("Invalid json");
     }
-
     ComputeLib::Executor executor(1);
     try {
-      auto res = executor.run(doc);
-      std::cout << std::get<ComputeLib::NumericType>(res) << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
+        auto res = executor.run(doc);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    }catch (const std::exception &e) {
-      std::cout << e.what();
+        std::cout << "Time taken by code: " << duration.count() << " microseconds" << std::endl;
+        std::cout << std::get<ComputeLib::NumericType>(res) << std::endl;
+    } catch (const std::exception &e) {
+        std::cout << e.what();
     }
 }

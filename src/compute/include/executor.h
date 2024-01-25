@@ -10,13 +10,14 @@
 #include <functional>
 #include <mutex>
 #include <condition_variable>
+#include <cmath>
 
 namespace ComputeLib {
-    template<typename T>
-    using CompareFunctionTemplate = std::function<bool(const T &, const T &)>;
+    using CompareFunction = std::function<bool(const NumericType &, const NumericType &)>;
+    using LogicalFunction = std::function<BoolType(const BoolType &, const BoolType &)>;
+    using MathFunction = std::function<NumericType(NumericType, NumericType)>;
 
-    using CompareFunction = CompareFunctionTemplate<NumericType>;
-
+    // CompareFunction
     template<typename T>
     bool compareEqual(const T &left, const T &right) {
         return left == right;
@@ -47,8 +48,7 @@ namespace ComputeLib {
         return left >= right;
     }
 
-    using LogicalFunction = std::function<BoolType(const BoolType &, const BoolType &)>;
-
+    // LogicalFunction
     template<typename T>
     BoolType logicalAnd(const T &left, const T &right) {
         return left & right;
@@ -59,6 +59,31 @@ namespace ComputeLib {
         return left | right;
     }
 
+    // MathFunction
+    template<typename T>
+    T mathAdd(const T &left, const T &right) {
+        return left + right;
+    }
+
+    template<typename T>
+    T mathSub(const T &left, const T &right) {
+        return left - right;
+    }
+
+    template<typename T>
+    T mathMul(const T &left, const T &right) {
+        return left * right;
+    }
+
+    template<typename T>
+    T mathDiv(const T &left, const T &right) {
+        return left / right;
+    }
+
+    template<typename T>
+    T mathPow(const T &left, const T &right) {
+        return std::pow(left, right);
+    }
 
     class Executor {
     public:
@@ -70,15 +95,7 @@ namespace ComputeLib {
 
         GenericValue compareOp(const Query &query);
 
-        GenericValue addOp(const Query &query);
-
-        GenericValue subOp(const Query &query);
-
-        GenericValue mulOp(const Query &query);
-
-        GenericValue divOp(const Query &query);
-
-        GenericValue powOp(const Query &query);
+        GenericValue mathOp(const Query &query);
 
         GenericValue absOp(const Query &query);
 

@@ -25,11 +25,11 @@ Executor::Executor(uint32_t num_threads) : num_threads_(num_threads) {
     REGISTER_OPERATION("LE", compareOp);
     REGISTER_OPERATION("GT", compareOp);
     REGISTER_OPERATION("GE", compareOp);
-    REGISTER_OPERATION("ADD", addOp);
-    REGISTER_OPERATION("SUB", subOp);
-    REGISTER_OPERATION("MUL", mulOp);
-    REGISTER_OPERATION("DIV", divOp);
-    REGISTER_OPERATION("POW", powOp);
+    REGISTER_OPERATION("ADD", mathOp);
+    REGISTER_OPERATION("SUB", mathOp);
+    REGISTER_OPERATION("MUL", mathOp);
+    REGISTER_OPERATION("DIV", mathOp);
+    REGISTER_OPERATION("POW", mathOp);
     REGISTER_OPERATION("ABS", absOp);
     REGISTER_OPERATION("AND", logicalOp);
     REGISTER_OPERATION("OR", logicalOp);
@@ -118,6 +118,13 @@ GenericValue Executor::run(const Query &query) {
 
 
 GenericValue Executor::compareOp(const Query &query) {
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "EQ"/"NE"/etc.
+     * "left": <left operand>
+     * "right": <right operand>
+     */
     static const std::unordered_map<std::string, CompareFunction> functionMap = {
         {"EQ", &compareEqual<NumericType>},
         {"NE", &compareNotEqual<NumericType>},
@@ -166,29 +173,60 @@ GenericValue Executor::compareOp(const Query &query) {
     throw std::runtime_error("Unsupported type for compare operator");
 }
 
-GenericValue Executor::addOp(const Query &query) {
-    BoolType result = 1;
-    return result;
-}
+GenericValue Executor::mathOp(const Query &query) {
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "ADD"/"SUB"/etc.
+     * "left": <left operand>
+     * "right": <right operand>
+     */
+    static const std::unordered_map<std::string, MathFunction> functionMap = {
+        {"ADD", &mathAdd<NumericType>},
+        {"SUB", &mathSub<NumericType>},
+        {"MUL", &mathMul<NumericType>},
+        {"DIV", &mathDiv<NumericType>},
+        {"POW", &mathPow<NumericType>},
+    };
 
-GenericValue Executor::subOp(const Query &query) {
-    BoolType result = 1;
-    return result;
-}
+    const std::string op = getQueryOperation(query);
+    if (!functionMap.contains(op)) {
+        throw std::runtime_error("Unknown operator: " + op);
+    }
+    auto &func = functionMap.at(op);
 
-GenericValue Executor::mulOp(const Query &query) {
-    BoolType result = 1;
-    return result;
-}
+    const GenericValue left = run(query["left"]);
+    const GenericValue right = run(query["right"]);
 
-GenericValue Executor::divOp(const Query &query) {
-    BoolType result = 1;
-    return result;
-}
+    if (holdsNumeric(left) && holdsNumeric(right)) {
+        NumericType result = func(GET_NUMERIC(left), GET_NUMERIC(right));
+        return result;
+    }
 
-GenericValue Executor::powOp(const Query &query) {
-    BoolType result = 1;
-    return result;
+    if (holdsNumericVector(left) && holdsNumeric(right)) {
+        const auto &leftVector = GET_NUMERIC_VECTOR(left);
+        const auto rightValue = GET_NUMERIC(right);
+        std::vector<NumericType> result(leftVector.size(), 0);
+        for (std::size_t i = 0; i < leftVector.size(); ++i) {
+            result[i] = func(leftVector[i], rightValue);
+        }
+        return result;
+    }
+
+    if (holdsNumericVector(left) && holdsNumericVector(right)) {
+        const auto &leftVector = GET_NUMERIC_VECTOR(left);
+        const auto &rightVector = GET_NUMERIC_VECTOR(right);
+        if (leftVector.size() != rightVector.size()) {
+            throw std::runtime_error("Vector size mismatch");
+        }
+        std::vector<NumericType> result(leftVector.size(), FALSE);
+        for (std::size_t i = 0; i < leftVector.size(); ++i) {
+            result[i] = func(leftVector[i], rightVector[i]);
+        }
+        return result;
+    }
+
+    throw std::runtime_error("Unsupported type for numeric operation");
 }
 
 GenericValue Executor::absOp(const Query &query) {
@@ -198,6 +236,12 @@ GenericValue Executor::absOp(const Query &query) {
 
 
 GenericValue Executor::logicalOp(const Query &query) {
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "AND"/"OR".
+     * "operands": [<operand>, <operand>, ...]
+     */
     static const std::unordered_map<std::string, LogicalFunction> functionMap = {
         {"AND", &logicalAnd<BoolType>},
         {"OR", &logicalOr<BoolType>}
@@ -299,6 +343,6 @@ GenericValue Executor::durationOp(const Query &query) {
 GenericValue Executor::selectOp(const Query &query) {
     const std::string name = query["value"].GetString();
     std::cout << "selectOp: " << name << std::endl;
-    std::vector<double> data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1};
+    std::vector<double> data(100000);
     return data;
 }
