@@ -22,11 +22,13 @@ include_directories(include)
 include_directories(src/compute/include)
 include_directories(third_party/include)
 
-add_executable(cpp
+add_executable(ComputeEngine
         src/main.cpp
         src/compute/operator.cpp
         src/compute/executor.cpp
 )
+
+set_project_warnings(${PROJECT_NAME})
 
 if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
     add_subdirectory(test)
