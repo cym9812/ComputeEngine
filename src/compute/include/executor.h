@@ -2,20 +2,23 @@
 #define CPP_EXECUTOR_H
 
 #include "operator.h"
-#include <rapidjson/document.h>
-#include <variant>
-#include <thread>
-#include <vector>
-#include <queue>
+#include "rapidjson/document.h"
+#include <algorithm>
+#include <cmath>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
-#include <condition_variable>
-#include <cmath>
+#include <numeric>
+#include <queue>
+#include <thread>
+#include <variant>
+#include <vector>
 
 namespace ComputeLib {
     using CompareFunction = std::function<bool(const NumericType &, const NumericType &)>;
     using LogicalFunction = std::function<BoolType(const BoolType &, const BoolType &)>;
-    using MathFunction = std::function<NumericType(NumericType, NumericType)>;
+    using MathFunction = std::function<NumericType(const NumericType &, const NumericType &)>;
+    using AggregateFunction = std::function<NumericType(const std::vector<NumericType> &)>;
 
     // CompareFunction
     template<typename T>
@@ -85,6 +88,28 @@ namespace ComputeLib {
         return std::pow(left, right);
     }
 
+    // AggregateFunction
+    template<typename T>
+    T aggregateMax(const std::vector<T> &vec) {
+        return std::ranges::max(vec);
+    }
+
+    template<typename T>
+    T aggregateMin(const std::vector<T> &vec) {
+        return std::ranges::min(vec);
+    }
+
+    template<typename T>
+    T aggregateSum(const std::vector<T> &vec) {
+        return std::accumulate(vec.begin(), vec.end(), 0);
+    }
+
+    template<typename T>
+    T aggregateAvg(const std::vector<T> &vec) {
+        double sum = aggregateSum<T>(vec);
+        return sum / vec.size();
+    }
+
     class Executor {
     public:
         explicit Executor(uint32_t num_threads);
@@ -103,7 +128,7 @@ namespace ComputeLib {
 
         GenericValue countOp(const Query &query);
 
-        GenericValue maxOp(const Query &query);
+        GenericValue aggregateOp(const Query &query);
 
         GenericValue minOp(const Query &query);
 
