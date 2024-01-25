@@ -1,9 +1,13 @@
 #include "executor.h"
 #include "operator.h"
-#include <rapidjson/document.h>
-#include <string>
-#include <stdexcept>
+#include "rapidjson/document.h"
+#include <algorithm>
+#include <functional>
 #include <iostream>
+#include <stdexcept>
+#include <string>
+#include <variant>
+#include <vector>
 
 using namespace ComputeLib;
 
@@ -34,9 +38,9 @@ Executor::Executor(uint32_t num_threads) : num_threads_(num_threads) {
     REGISTER_OPERATION("AND", logicalOp);
     REGISTER_OPERATION("OR", logicalOp);
     REGISTER_OPERATION("COUNT", countOp);
-    REGISTER_OPERATION("MAX", maxOp);
-    REGISTER_OPERATION("MIN", minOp);
-    REGISTER_OPERATION("AVG", avgOp);
+    REGISTER_OPERATION("MAX", aggregateOp);
+    REGISTER_OPERATION("MIN", aggregateOp);
+    REGISTER_OPERATION("AVG", aggregateOp);
     REGISTER_OPERATION("JUMP", jumpOp);
     REGISTER_OPERATION("BEFORE", beforeOp);
     REGISTER_OPERATION("AFTER", afterOp);
@@ -230,8 +234,30 @@ GenericValue Executor::mathOp(const Query &query) {
 }
 
 GenericValue Executor::absOp(const Query &query) {
-    BoolType result = 1;
-    return result;
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "ABS"
+     * "value": <operand>
+     */
+
+    const auto value = run(query["value"]);
+
+    if (holdsNumeric(value)) {
+        NumericType result = std::abs(GET_NUMERIC(value));
+        return result;
+    }
+
+    if (holdsNumericVector(value)) {
+        const auto &vec = GET_NUMERIC_VECTOR(value);
+        NumericVectorType result(vec.size(), 0);
+        for (std::size_t i = 0; i < vec.size(); ++i) {
+            result[i] = std::abs(vec[i]);
+        }
+        return result;
+    }
+
+    throw std::runtime_error("Unsupported type for ABS operation");
 }
 
 
@@ -289,32 +315,62 @@ GenericValue Executor::logicalOp(const Query &query) {
 }
 
 GenericValue Executor::countOp(const Query &query) {
-    GenericValue value = run(query["value"]);
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "COUNT"
+     * "value": <operand>
+     * "initialValue": <value>
+     * "unit": <value>
+     */
+    const GenericValue value = run(query["value"]);
 
     if (holdsBoolVector(value)) {
         const auto &vec = GET_BOOL_VECTOR(value);
         auto result = static_cast<NumericType>(std::ranges::count(vec, TRUE));
         return result;
     }
-    return value;
+
+    throw std::runtime_error("Operand of COUNT must be of type bool[]");
 }
 
-GenericValue Executor::maxOp(const Query &query) {
-    BoolType result = 1;
-    return result;
-}
+GenericValue Executor::aggregateOp(const Query &query) {
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "MAX"/"MIN"/"AVG"
+     * "value": <operand>
+     */
+    static const std::unordered_map<std::string, AggregateFunction> functionMap = {
+        {"MAX", &aggregateMax<NumericType>},
+        {"MIN", &aggregateMin<NumericType>},
+        {"AVG", &aggregateAvg<NumericType>},
+    };
 
-GenericValue Executor::minOp(const Query &query) {
-    BoolType result = 1;
-    return result;
-}
+    const std::string op = getQueryOperation(query);
+    if (!functionMap.contains(op)) {
+        throw std::runtime_error("Unknown operator: " + op);
+    }
+    auto &func = functionMap.at(op);
 
-GenericValue Executor::avgOp(const Query &query) {
-    BoolType result = 1;
-    return result;
+    const GenericValue value = run(query["value"]);
+    if (holdsNumericVector(value)) {
+        NumericType result = func(GET_NUMERIC_VECTOR(value));
+        return result;
+    }
+
+    throw std::runtime_error("Operand of aggregate functions must be of type numeric[]");
 }
 
 GenericValue Executor::jumpOp(const Query &query) {
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "JUMP"
+     * "value": <operand>
+     * "from": <value>
+     * "to": <value>
+     */
     BoolType result = 1;
     return result;
 }
@@ -341,6 +397,12 @@ GenericValue Executor::durationOp(const Query &query) {
 }
 
 GenericValue Executor::selectOp(const Query &query) {
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "SELECT"
+     * "value": string
+     */
     const std::string name = query["value"].GetString();
     std::cout << "selectOp: " << name << std::endl;
     std::vector<double> data(100000);
