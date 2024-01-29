@@ -434,7 +434,42 @@ GenericValue Executor::holdOp(const Query &query) {
 }
 
 GenericValue Executor::durationOp(const Query &query) {
-    GenericValue value = run(query["value"]);
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "DURATION"
+     * "value": <operand>
+     * "minDuration": <value>
+     */
+
+    const GenericValue value = run(query["value"]);
+    const GenericValue minDuration = run(query["minDuration"]);
+
+    if (holdsBoolVector(value) && holdsNumeric(minDuration)) {
+        const auto &valueVec = GET_BOOL_VECTOR(value);
+        const auto minDurationVal = GET_NUMERIC(minDuration);
+        BoolVectorType result(valueVec);
+
+        const auto cntThreshold = static_cast<uint32_t>(minDurationVal / 0.1);
+        uint32_t cnt = 0;
+        bool inSequence = false;
+        for (std::size_t i = 0; i < result.size(); i++) {
+            if (inSequence) {
+                if (result[i] == FALSE) {
+                    if (cnt < cntThreshold) {
+                        std::fill_n(result.begin() + i - cnt, cnt, FALSE);
+                    }
+                    cnt = 0;
+                    inSequence = false;
+                }
+            } else {
+                if (result[i] == TRUE) {
+                    inSequence = true;
+                    cnt++;
+                }
+            }
+        }
+    }
 
     return value;
 }
