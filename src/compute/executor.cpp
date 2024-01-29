@@ -334,10 +334,14 @@ GenericValue Executor::countOp(const Query &query) {
      * "unit": <value>
      */
     const GenericValue value = run(query["value"]);
+    const GenericValue initialValue = run(query["initialValue"]);
+    const GenericValue unit = run(query["unit"]);
 
-    if (holdsBoolVector(value)) {
+    if (holdsBoolVector(value) && holdsNumeric(initialValue) && holdsNumeric(unit)) {
         const auto &vec = GET_BOOL_VECTOR(value);
-        auto result = static_cast<NumericType>(std::ranges::count(vec, TRUE));
+        const auto iVal = GET_NUMERIC(initialValue);
+        const auto uVal = GET_NUMERIC(unit);
+        auto result = static_cast<NumericType>(std::ranges::count(vec, TRUE)) * iVal + uVal;
         return result;
     }
 
