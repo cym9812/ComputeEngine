@@ -434,8 +434,98 @@ GenericValue Executor::beforeOp(const Query &query) {
 }
 
 GenericValue Executor::afterOp(const Query &query) {
-    BoolType result = 1;
-    return result;
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "AFTER"
+     * "value": <operand>
+     * "from": <value>
+     * "to": <value>
+     * "duration": <value>
+     */
+    const GenericValue value = run(query["value"]);
+    const GenericValue from = run(query["from"]);
+    const GenericValue to = run(query["to"]);
+    const GenericValue duration = run(query["duration"]);
+
+    if (holdsNumericVector(value) && holdsNumeric(from) && holdsNumeric(to) && holdsNumeric(duration)) {
+        const auto &valueVec = GET_NUMERIC_VECTOR(value);
+        const auto fromVal = GET_NUMERIC(from);
+        const auto toVal = GET_NUMERIC(to);
+        const auto threshold = static_cast<uint32_t>(GET_NUMERIC(duration) * 10);
+
+        BoolVectorType result(valueVec.size(), FALSE);
+        bool findFromFlag = false;
+        bool findToFlag = false;
+        uint32_t cnt = 0;
+        if (fromVal < toVal) {
+            // e.g. 5 -> 10
+            for (size_t i = 1; i < valueVec.size(); i++) {
+                if (!findFromFlag) {
+                    if (valueVec[i] >= fromVal && valueVec[i - 1] < fromVal) {
+                        findFromFlag = true;
+                    }
+                } else {
+                    // findFromFlag = true;
+                    if (valueVec[i] < fromVal) {
+                        // value < fromVal < toVal
+                        findFromFlag = false;
+                        findToFlag = false;
+                        cnt = 0;
+                    } else if (valueVec[i] < toVal) {
+                        // fromVal <= value < toVal
+                        if (findToFlag) {
+                            findFromFlag = false;
+                            findToFlag = false;
+                            cnt = 0;
+                        }
+                    } else {
+                        // fromVal < toVal <= value
+                        if (!findToFlag) {
+                            findToFlag = true;
+                            cnt = 0;
+                        }
+                        cnt++;
+                        result[i] = cnt >= threshold ? TRUE : FALSE;
+                    }
+                }
+            }
+        } else {
+            // fromVal > toVal, e.g. 10 -> 5
+            for (size_t i = 1; i < valueVec.size(); i++) {
+                if (!findFromFlag) {
+                    if (valueVec[i] <= fromVal && valueVec[i - 1] > fromVal) {
+                        findFromFlag = true;
+                    }
+                } else {
+                    // findFromFlag = true;
+                    if (valueVec[i] > fromVal) {
+                        // toVal < fromVal < value
+                        findFromFlag = false;
+                        findToFlag = false;
+                        cnt = 0;
+                    } else if (valueVec[i] > toVal) {
+                        // toVal < value <= fromVal
+                        if (findToFlag) {
+                            findFromFlag = false;
+                            findToFlag = false;
+                            cnt = 0;
+                        }
+                    } else {
+                        // value <= toVal < fromVal
+                        if (!findToFlag) {
+                            findToFlag = true;
+                            cnt = 0;
+                        }
+                        cnt++;
+                        result[i] = cnt >= threshold ? TRUE : FALSE;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    throw std::runtime_error("Operand type not supported");
 }
 
 GenericValue Executor::holdOp(const Query &query) {
