@@ -23,6 +23,85 @@ static constexpr uint8_t FALSE = 0;
 #define GET_BOOL_VECTOR(var) get<BoolVectorType>(var)
 #define GET_NUMERIC_VECTOR(var) get<NumericVectorType>(var)
 
+static void holdOpVecToAny(const NumericVectorType &valueVec,
+                           const std::unordered_set<NumericType> &fromValues,
+                           const uint32_t threshold,
+                           BoolVectorType &result) {
+    bool findFlag = false;
+    uint32_t cnt = 0;
+    for (std::size_t i = 1; i < valueVec.size(); ++i) {
+        if (!findFlag) {
+            if (!fromValues.contains(valueVec[i]) && fromValues.contains(valueVec[i - 1])) {
+                findFlag = true;
+                cnt++;
+            }
+        } else {
+            if (!fromValues.contains(valueVec[i])) {
+                cnt++;
+                if (cnt >= threshold) {
+                    result[i] = TRUE;
+                }
+            } else {
+                cnt = 0;
+                findFlag = false;
+            }
+        }
+    }
+}
+
+static void holdOpAnyToVec(const NumericVectorType &valueVec,
+                           const std::unordered_set<NumericType> &toValues,
+                           const uint32_t threshold,
+                           BoolVectorType &result) {
+    bool findFlag = false;
+    uint32_t cnt = 0;
+    for (std::size_t i = 1; i < valueVec.size(); ++i) {
+        if (!findFlag) {
+            if (toValues.contains(valueVec[i]) && !toValues.contains(valueVec[i - 1])) {
+                findFlag = true;
+                cnt++;
+            }
+        } else {
+            if (toValues.contains(valueVec[i])) {
+                cnt++;
+                if (cnt >= threshold) {
+                    result[i] = TRUE;
+                }
+            } else {
+                cnt = 0;
+                findFlag = false;
+            }
+        }
+    }
+}
+
+static void holdOpVecToVec(const NumericVectorType &valueVec,
+                           const std::unordered_set<NumericType> &fromValues,
+                           const std::unordered_set<NumericType> &toValues,
+                           const uint32_t threshold,
+                           BoolVectorType &result) {
+    bool findFlag = false;
+    uint32_t cnt = 0;
+    for (std::size_t i = 1; i < valueVec.size(); ++i) {
+        if (!findFlag) {
+            if (toValues.contains(valueVec[i]) && fromValues.contains(valueVec[i - 1])) {
+                findFlag = true;
+                cnt++;
+            }
+        } else {
+            if (toValues.contains(valueVec[i])) {
+                cnt++;
+                if (cnt >= threshold) {
+                    result[i] = TRUE;
+                }
+            } else {
+                cnt = 0;
+                findFlag = false;
+            }
+        }
+    }
+}
+
 Executor::Executor(uint32_t num_threads) : num_threads_(num_threads) {
     REGISTER_OPERATION("EQ", compareOp);
     REGISTER_OPERATION("NE", compareOp);
@@ -529,8 +608,56 @@ GenericValue Executor::afterOp(const Query &query) {
 }
 
 GenericValue Executor::holdOp(const Query &query) {
-    BoolType result = 1;
-    return result;
+    /*
+     * Query format:
+     * "type": "operation"
+     * "operation": "HOLD"
+     * "value": <operand>
+     * "from": [<value>, <value>, ...]
+     * "to": [<value>, <value>, ...]
+     * "duration": <value>
+     */
+    const GenericValue value = run(query["value"]);
+    const GenericValue from = run(query["from"]);
+    const GenericValue to = run(query["to"]);
+    const GenericValue duration = run(query["duration"]);
+
+    if (holdsNumericVector(value) && holdsNumericVector(from) && holdsNumericVector(to) && holdsNumeric(duration)) {
+        auto valueVec = GET_NUMERIC_VECTOR(value); // copy
+        const auto &fromVec = GET_NUMERIC_VECTOR(from);
+        const auto &toVec = GET_NUMERIC_VECTOR(to);
+        const auto durationVal = GET_NUMERIC(duration);
+
+        const bool needReverse = durationVal < 0;
+        const auto threshold = static_cast<uint32_t>(std::abs(durationVal) * 10);
+
+        std::unordered_set<NumericType> fromValues(fromVec.begin(), fromVec.end());
+        std::unordered_set<NumericType> toValues(toVec.begin(), toVec.end());
+        BoolVectorType result(valueVec.size(), FALSE);
+
+        if (needReverse) {
+            std::ranges::reverse(valueVec);
+        }
+
+        if (!fromValues.empty() && toValues.empty()) {
+            // fromVal -> Any
+            holdOpVecToAny(valueVec, fromValues, threshold, result);
+        } else if (fromValues.empty() && !toValues.empty()) {
+            // Any -> toVal
+            holdOpAnyToVec(valueVec, toValues, threshold, result);
+        } else {
+            // fromVal -> toVal
+            holdOpVecToVec(valueVec, fromValues, toValues, threshold, result);
+        }
+
+        if (needReverse) {
+            std::ranges::reverse(result);
+        }
+
+        return result;
+    }
+
+    throw std::runtime_error("Operand type not supported");
 }
 
 GenericValue Executor::durationOp(const Query &query) {
