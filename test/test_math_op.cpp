@@ -240,7 +240,7 @@ TEST(MathOpTest, Multiplication3) {
     EXPECT_EQ(vec[4], 10);
 }
 
-TEST(MathOpTest, Division1){
+TEST(MathOpTest, Division1) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
                                    "type": "operation",
@@ -319,7 +319,7 @@ TEST(MathOpTest, Division3) {
     EXPECT_EQ(vec[4], 2.5);
 }
 
-TEST(MathOpTest, power1){
+TEST(MathOpTest, power1) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
                                    "type": "operation",
