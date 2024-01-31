@@ -1,4 +1,13 @@
-find_package(GTest REQUIRED)
+cmake_policy(SET CMP0135 NEW)
+include(FetchContent)
+FetchContent_Declare(gtest
+        QUIET
+        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+)
+# configure build of googletest
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(gtest)
 
 enable_testing()
 
