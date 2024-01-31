@@ -6,6 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -383,39 +384,44 @@ GenericValue Executor::jumpOp(const Query &query) {
      * "operation": "JUMP"
      * "value": <operand>
      * "from": [<value>, <value>, ...]
-     * "to": <value>
+     * "to": [<value>, <value>, ...]
      */
     const GenericValue value = run(query["value"]);
     const GenericValue from = run(query["from"]);
     const GenericValue to = run(query["to"]);
 
-    if (holdsNumericVector(value) && holdsNumericVector(from) && holdsNumeric(to)) {
+    if (holdsNumericVector(value) && holdsNumericVector(from) && holdsNumericVector(to)) {
         const auto &valueVec = GET_NUMERIC_VECTOR(value);
         const auto &fromVec = GET_NUMERIC_VECTOR(from);
-        const auto toVal = GET_NUMERIC(to);
+        const auto &toVec = GET_NUMERIC_VECTOR(to);
+
+        std::unordered_set<NumericType> fromValues(fromVec.begin(), fromVec.end());
+        std::unordered_set<NumericType> toValues(toVec.begin(), toVec.end());
 
         BoolVectorType result(valueVec.size(), FALSE);
 
-        if (fromVec.empty()) {
+        if (fromValues.empty() && !toValues.empty()) {
             // Any -> toVal
             for (std::size_t i = 1; i < valueVec.size(); ++i) {
-                if (valueVec[i - 1] != toVal && valueVec[i] == toVal) {
+                if (!toValues.contains(valueVec[i - 1]) && toValues.contains(valueVec[i])) {
+                    result[i] = TRUE;
+                }
+            }
+        } else if (!fromValues.empty() && toValues.empty()){
+            // fromVal -> Any
+            for (std::size_t i = 1; i < valueVec.size(); ++i) {
+                if (fromValues.contains(valueVec[i - 1]) && !fromValues.contains(valueVec[i])) {
                     result[i] = TRUE;
                 }
             }
         } else {
             // fromVal -> toVal
             for (std::size_t i = 1; i < valueVec.size(); ++i) {
-                if (valueVec[i] == toVal) {
-                    for (const auto &fromVal: fromVec) {
-                        if (valueVec[i - 1] == fromVal) {
-                            result[i] = TRUE;
-                        }
-                    }
+                if (fromValues.contains(valueVec[i - 1]) && toValues.contains(valueVec[i])) {
+                    result[i] = TRUE;
                 }
             }
         }
-
         return result;
     }
 
