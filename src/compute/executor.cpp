@@ -421,7 +421,7 @@ GenericValue Executor::countOp(const Query &query) {
         const auto &vec = GET_BOOL_VECTOR(value);
         const auto iVal = GET_NUMERIC(initialValue);
         const auto uVal = GET_NUMERIC(unit);
-        auto result = static_cast<NumericType>(std::ranges::count(vec, TRUE)) * iVal + uVal;
+        auto result = static_cast<NumericType>(std::ranges::count(vec, TRUE)) * uVal + iVal;
         return result;
     }
 
