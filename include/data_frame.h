@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <stdexcept>
+#include <iostream>
+#include <unordered_map>
 
 using DataColumn = std::variant<std::vector<uint8_t>, std::vector<int32_t>, std::vector<uint32_t>, std::vector<double> >
 ;
@@ -25,14 +28,27 @@ public:
         if (nameMap.contains(name)) {
             throw std::runtime_error("Column already exists");
         }
-        if (std::holds_alternative<std::vector<uint8_t>>(column)) {
-            auto &vec = std::get<std::vector<uint8_t>>(column);
-             if (vec.size() != getRowCount()) {
-                 throw  std::runtime_error("Column size does not match timestamps size");
-             }
+        if (std::holds_alternative<std::vector<uint8_t> >(column)) {
+            auto &vec = std::get<std::vector<uint8_t> >(column);
+            if (vec.size() != getRowCount()) {
+                throw std::runtime_error("Column size does not match timestamps size");
+            }
             columns.emplace_back(vec);
         }
     };
+
+    [[nodiscard]] const DataColumn &getColumn(const std::string &name) const {
+        if (!nameMap.contains(name)) {
+            throw std::runtime_error("Column does not exist: " + name);
+        }
+
+        auto index = nameMap.at(name);
+        return columns[index];
+    }
+
+    int64_t getSamplingIntervalNs() const {
+        return 1e8; // 100ms
+    }
 
 private:
     std::unordered_map<std::string, uint32_t> nameMap{};
