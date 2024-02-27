@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <variant>
 
-TEST(MathOpTest, Jump1) {
+TEST(TrendOpTest, Jump1) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -25,7 +25,7 @@ TEST(MathOpTest, Jump1) {
     }
 }
 
-TEST(MathOpTest, Jump2) {
+TEST(TrendOpTest, Jump2) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -47,7 +47,7 @@ TEST(MathOpTest, Jump2) {
     }
 }
 
-TEST(MathOpTest, Jump3) {
+TEST(TrendOpTest, Jump3) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -69,7 +69,7 @@ TEST(MathOpTest, Jump3) {
     }
 }
 
-TEST(MathOpTest, Jump4) {
+TEST(TrendOpTest, Jump4) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -91,7 +91,7 @@ TEST(MathOpTest, Jump4) {
     }
 }
 
-TEST(MathOpTest, Jump5) {
+TEST(TrendOpTest, Jump5) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
