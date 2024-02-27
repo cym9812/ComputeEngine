@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <variant>
 
-TEST(MathOpTest, After1) {
+TEST(TrendOpTest, After1) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -26,7 +26,7 @@ TEST(MathOpTest, After1) {
     }
 }
 
-TEST(MathOpTest, After2) {
+TEST(TrendOpTest, After2) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -49,7 +49,7 @@ TEST(MathOpTest, After2) {
     }
 }
 
-TEST(MathOpTest, After3) {
+TEST(TrendOpTest, After3) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -73,7 +73,7 @@ TEST(MathOpTest, After3) {
 }
 
 
-TEST(MathOpTest, After4) {
+TEST(TrendOpTest, After4) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -96,7 +96,7 @@ TEST(MathOpTest, After4) {
     }
 }
 
-TEST(MathOpTest, After5) {
+TEST(TrendOpTest, After5) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -119,7 +119,7 @@ TEST(MathOpTest, After5) {
     }
 }
 
-TEST(MathOpTest, After6) {
+TEST(TrendOpTest, After6) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
@@ -142,7 +142,7 @@ TEST(MathOpTest, After6) {
     }
 }
 
-TEST(MathOpTest, After7) {
+TEST(TrendOpTest, After7) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",

@@ -3,138 +3,133 @@
 #include <gtest/gtest.h>
 #include <variant>
 
-TEST(TrendOpTest, holdValueToValueForward) {
+
+TEST(CompareOpTest, EQ) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
-      "operation":"HOLD",
-      "value":{"type":"value","value":[1,2,1,1,2,2,2,1]},
-      "from":{"type":"value","value":[1]},
-      "to":{"type":"value","value":[2]},
-      "duration":{"type":"value","value":0.2}
+      "operation":"EQ",
+      "left":{"type":"value","value":[0,1,2,3,4,5,6,7,8,9]},
+      "right":{"type":"value","value":5}
     })";
-    ComputeLib::BoolVectorType expect = {0, 0, 0, 0, 0, 1, 1, 0};
+    ComputeLib::BoolVectorType expect = {0, 0, 0, 0, 0, 1, 0, 0, 0, 0};
 
     rapidjson::Document doc;
     doc.Parse(task.c_str());
     ComputeLib::GenericValue result = executor.run(doc);
     EXPECT_TRUE(executor.holdsBoolVector(result));
     auto &vec = std::get<ComputeLib::BoolVectorType>(result);
+
     EXPECT_EQ(vec.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
         EXPECT_EQ(vec[i], expect[i]) << "Mismatch at index " << i;
     }
 }
 
-TEST(TrendOpTest, holdValueToValueBackword) {
+TEST(CompareOpTest, NE) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
-      "operation":"HOLD",
-      "value":{"type":"value","value":[1,2,1,1,2,2,2,1]},
-      "from":{"type":"value","value":[1]},
-      "to":{"type":"value","value":[2]},
-      "duration":{"type":"value","value":-0.2}
+      "operation":"NE",
+      "left":{"type":"value","value":[0,1,2,3,4,5,6,7,8,9]},
+      "right":{"type":"value","value":5}
     })";
-    ComputeLib::BoolVectorType expect = {0, 0, 0, 0, 1, 1, 0, 0};
+    ComputeLib::BoolVectorType expect = {1, 1, 1, 1, 1, 0, 1, 1, 1, 1};
 
     rapidjson::Document doc;
     doc.Parse(task.c_str());
     ComputeLib::GenericValue result = executor.run(doc);
     EXPECT_TRUE(executor.holdsBoolVector(result));
     auto &vec = std::get<ComputeLib::BoolVectorType>(result);
+
     EXPECT_EQ(vec.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
         EXPECT_EQ(vec[i], expect[i]) << "Mismatch at index " << i;
     }
 }
 
-TEST(TrendOpTest, holdValueToAnyForward) {
+TEST(CompareOpTest, LT) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
-      "operation":"HOLD",
-      "value":{"type":"value","value":[1,2,2,1,3,3,1,4,5,6]},
-      "from":{"type":"value","value":[1]},
-      "to":{"type":"value","value":[]},
-      "duration":{"type":"value","value":0.2}
+      "operation":"LT",
+      "left":{"type":"value","value":[0,1,2,3,4,5,6,7,8,9]},
+      "right":{"type":"value","value":5}
     })";
-    ComputeLib::BoolVectorType expect = {0, 0, 1, 0, 0, 1, 0, 0, 1, 1};
+    ComputeLib::BoolVectorType expect = {1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
 
     rapidjson::Document doc;
     doc.Parse(task.c_str());
     ComputeLib::GenericValue result = executor.run(doc);
     EXPECT_TRUE(executor.holdsBoolVector(result));
     auto &vec = std::get<ComputeLib::BoolVectorType>(result);
+
     EXPECT_EQ(vec.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
         EXPECT_EQ(vec[i], expect[i]) << "Mismatch at index " << i;
     }
 }
 
-TEST(TrendOpTest, holdValueToAnyBackword) {
+TEST(CompareOpTest, LE) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
-      "operation":"HOLD",
-      "value":{"type":"value","value":[6,5,4,1,3,3,1,2,2,1]},
-      "from":{"type":"value","value":[1]},
-      "to":{"type":"value","value":[]},
-      "duration":{"type":"value","value":-0.2}
+      "operation":"LE",
+      "left":{"type":"value","value":[0,1,2,3,4,5,6,7,8,9]},
+      "right":{"type":"value","value":5}
     })";
-    ComputeLib::BoolVectorType expect = {1, 1, 0, 0, 1, 0, 0, 1, 0, 0};
+    ComputeLib::BoolVectorType expect = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
 
     rapidjson::Document doc;
     doc.Parse(task.c_str());
     ComputeLib::GenericValue result = executor.run(doc);
     EXPECT_TRUE(executor.holdsBoolVector(result));
     auto &vec = std::get<ComputeLib::BoolVectorType>(result);
+
     EXPECT_EQ(vec.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
         EXPECT_EQ(vec[i], expect[i]) << "Mismatch at index " << i;
     }
 }
 
-TEST(TrendOpTest, holdAnyToValueForward) {
+TEST(CompareOpTest, GT) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
-      "operation":"HOLD",
-      "value":{"type":"value","value":[1,1,1,2,1,1,3,1,1,1]},
-      "from":{"type":"value","value":[]},
-      "to":{"type":"value","value":[1]},
-      "duration":{"type":"value","value":0.2}
+      "operation":"GT",
+      "left":{"type":"value","value":[0,1,2,3,4,5,6,7,8,9]},
+      "right":{"type":"value","value":5}
     })";
-    ComputeLib::BoolVectorType expect = {0, 0, 0, 0, 0, 1, 0, 0, 1, 1};
+    ComputeLib::BoolVectorType expect = {0, 0, 0, 0, 0, 0, 1, 1, 1, 1};
 
     rapidjson::Document doc;
     doc.Parse(task.c_str());
     ComputeLib::GenericValue result = executor.run(doc);
     EXPECT_TRUE(executor.holdsBoolVector(result));
     auto &vec = std::get<ComputeLib::BoolVectorType>(result);
+
     EXPECT_EQ(vec.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
         EXPECT_EQ(vec[i], expect[i]) << "Mismatch at index " << i;
     }
 }
 
-TEST(TrendOpTest, holdAnyToValueBackword) {
+TEST(CompareOpTest, GE) {
     ComputeLib::Executor executor(1);
     const std::string task = R"({
       "type":"operation",
-      "operation":"HOLD",
-      "value":{"type":"value","value":[1,1,1,3,1,1,2,1,1,1]},
-      "from":{"type":"value","value":[]},
-      "to":{"type":"value","value":[1]},
-      "duration":{"type":"value","value":-0.2}
+      "operation":"GE",
+      "left":{"type":"value","value":[0,1,2,3,4,5,6,7,8,9]},
+      "right":{"type":"value","value":5}
     })";
-    ComputeLib::BoolVectorType expect = {1, 1, 0, 0, 1, 0, 0, 0, 0, 0};
+    ComputeLib::BoolVectorType expect = {0, 0, 0, 0, 0, 1, 1, 1, 1, 1};
 
     rapidjson::Document doc;
     doc.Parse(task.c_str());
     ComputeLib::GenericValue result = executor.run(doc);
     EXPECT_TRUE(executor.holdsBoolVector(result));
     auto &vec = std::get<ComputeLib::BoolVectorType>(result);
+
     EXPECT_EQ(vec.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
         EXPECT_EQ(vec[i], expect[i]) << "Mismatch at index " << i;
