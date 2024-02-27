@@ -2,12 +2,11 @@
 #define CPP_EXECUTOR_H
 
 #include "operator.h"
+#include "data_frame.h"
 #include "rapidjson/document.h"
 #include <algorithm>
 #include <cmath>
-#include <condition_variable>
 #include <functional>
-#include <mutex>
 #include <numeric>
 #include <queue>
 #include <thread>
@@ -116,6 +115,11 @@ namespace ComputeLib {
 
         ~Executor() = default;
 
+        void setDataSource(const DataFrame *dataFrame) {
+            data = dataFrame;
+            timeIntervalPerRow_ = data->getSamplingIntervalNs();
+        }
+
         GenericValue run(const Query &query);
 
         GenericValue compareOp(const Query &query);
@@ -129,10 +133,6 @@ namespace ComputeLib {
         GenericValue countOp(const Query &query);
 
         GenericValue aggregateOp(const Query &query);
-
-        GenericValue minOp(const Query &query);
-
-        GenericValue avgOp(const Query &query);
 
         GenericValue jumpOp(const Query &query);
 
@@ -182,13 +182,25 @@ namespace ComputeLib {
 
     private:
         uint32_t num_threads_;
-        std::vector<std::thread> threads;
-        std::queue<std::function<void()> > tasks;
-        std::mutex mutex;
-        std::condition_variable cv;
-        bool stop = false;
+        int64_t timeIntervalPerRow_{100'000'000};
+        const DataFrame *data{nullptr};
 
         std::unordered_map<std::string, std::function<GenericValue(const Query &)> > operationMap_;
+
+        [[nodiscard]] uint32_t calculateRowCount(NumericType totalTimeSeconds) const {
+            auto rowCount = static_cast<uint32_t>(totalTimeSeconds * 1e9 / timeIntervalPerRow_);
+            return rowCount;
+        }
+
+        [[nodiscard]] NumericVectorType getData(const std::string &name) const {
+            if (data == nullptr) {
+                throw std::runtime_error("No input data");
+            }
+            const auto &column = data->getColumn(name);
+            NumericVectorType result = std::visit(
+                    [](const auto &vec) { return NumericVectorType(vec.begin(), vec.end()); }, column);
+            return result;
+        }
     };
 }
 

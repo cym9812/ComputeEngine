@@ -486,7 +486,7 @@ GenericValue Executor::jumpOp(const Query &query) {
                     result[i] = TRUE;
                 }
             }
-        } else if (!fromValues.empty() && toValues.empty()){
+        } else if (!fromValues.empty() && toValues.empty()) {
             // fromVal -> Any
             for (std::size_t i = 1; i < valueVec.size(); ++i) {
                 if (fromValues.contains(valueVec[i - 1]) && !fromValues.contains(valueVec[i])) {
@@ -531,7 +531,7 @@ GenericValue Executor::afterOp(const Query &query) {
         const auto &valueVec = GET_NUMERIC_VECTOR(value);
         const auto fromVal = GET_NUMERIC(from);
         const auto toVal = GET_NUMERIC(to);
-        const auto threshold = static_cast<uint32_t>(GET_NUMERIC(duration) * 10);
+        const auto threshold = calculateRowCount(GET_NUMERIC(duration));
 
         BoolVectorType result(valueVec.size(), FALSE);
         bool findFromFlag = false;
@@ -629,7 +629,7 @@ GenericValue Executor::holdOp(const Query &query) {
         const auto durationVal = GET_NUMERIC(duration);
 
         const bool needReverse = durationVal < 0;
-        const auto threshold = static_cast<uint32_t>(std::abs(durationVal) * 10);
+        const auto threshold = calculateRowCount(std::abs(durationVal));
 
         std::unordered_set<NumericType> fromValues(fromVec.begin(), fromVec.end());
         std::unordered_set<NumericType> toValues(toVec.begin(), toVec.end());
@@ -677,7 +677,7 @@ GenericValue Executor::durationOp(const Query &query) {
         const auto minDurationVal = GET_NUMERIC(minDuration);
         BoolVectorType result(valueVec);
 
-        const auto cntThreshold = static_cast<uint32_t>(minDurationVal / 0.1);
+        const auto cntThreshold = calculateRowCount(minDurationVal);
         uint32_t cnt = 0;
         bool inSequence = false;
         for (std::size_t i = 0; i < result.size(); i++) {
@@ -708,8 +708,8 @@ GenericValue Executor::selectOp(const Query &query) {
      * "operation": "SELECT"
      * "value": string
      */
+
     const std::string name = query["value"].GetString();
-    std::cout << "selectOp: " << name << std::endl;
-    std::vector<double> data(100000);
-    return data;
+    NumericVectorType result = getData(name);
+    return result;
 }
