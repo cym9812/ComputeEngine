@@ -434,6 +434,7 @@ GenericValue Executor::aggregateOp(const Query &query) {
      * "type": "operation"
      * "operation": "MAX"/"MIN"/"AVG"
      * "value": <operand>
+     * (optional)"range": <operand>
      */
     static const std::unordered_map<std::string, AggregateFunction> functionMap = {
         {"MAX", &aggregateMax<NumericType>},
@@ -449,7 +450,28 @@ GenericValue Executor::aggregateOp(const Query &query) {
 
     const GenericValue value = run(query["value"]);
     if (holdsNumericVector(value)) {
-        NumericType result = func(GET_NUMERIC_VECTOR(value));
+        const auto &valueVec = GET_NUMERIC_VECTOR(value);
+        if (!query.HasMember("range")) {
+            NumericType result = func(valueVec);
+            return result;
+        }
+
+        const GenericValue range = run(query["range"]);
+        if (!holdsBoolVector(range)) {
+            throw std::runtime_error("Range of aggregate functions must be of type bool[]");
+        }
+        const auto &mask = GET_BOOL_VECTOR(range);
+        if (mask.size() != valueVec.size()) {
+            throw std::runtime_error("Size mismatch between value and range");
+        }
+        NumericVectorType filteredValueVec;
+        filteredValueVec.reserve(valueVec.size());
+        for (std::size_t i = 0; i < valueVec.size(); ++i) {
+            if (mask[i] == TRUE) {
+                filteredValueVec.emplace_back(valueVec[i]);
+            }
+        }
+        NumericType result = func(filteredValueVec);
         return result;
     }
 
@@ -508,8 +530,7 @@ GenericValue Executor::jumpOp(const Query &query) {
 }
 
 GenericValue Executor::beforeOp(const Query &query) {
-    BoolType result = 1;
-    return result;
+    throw std::runtime_error("Not implememt");
 }
 
 GenericValue Executor::afterOp(const Query &query) {
